@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { System } from '../core/System.js';
+import { CameraController } from '../components/CameraController.js';
 
 /**
  * RenderSystem manages the Three.js rendering pipeline
@@ -13,6 +14,7 @@ export class RenderSystem extends System {
     this.camera = null;
     this.renderer = null;
     this.canvas = null;
+    this.cameraController = null;
     
     // Rendering state
     this.isInitialized = false;
@@ -36,9 +38,12 @@ export class RenderSystem extends System {
         1000 // Far clipping plane
       );
       
-      // Position camera for third-person view
+      // Position camera for third-person view (initial position)
       this.camera.position.set(0, 5, 10);
       this.camera.lookAt(0, 0, 0);
+      
+      // Create camera controller for third-person following
+      this.cameraController = new CameraController();
       
       // Create the WebGL renderer
       this.renderer = new THREE.WebGLRenderer({ 
@@ -135,12 +140,33 @@ export class RenderSystem extends System {
   }
 
   /**
+   * Set camera target for third-person following
+   */
+  setCameraTarget(target) {
+    if (this.cameraController && this.camera) {
+      this.cameraController.initialize(this.camera, target);
+    }
+  }
+
+  /**
+   * Get camera controller for configuration
+   */
+  getCameraController() {
+    return this.cameraController;
+  }
+
+  /**
    * Update the render system
    */
   update(deltaTime, components, gameState) {
     if (!this.isInitialized) {
       console.warn('RenderSystem not initialized');
       return;
+    }
+
+    // Update camera controller if initialized
+    if (this.cameraController) {
+      this.cameraController.update(deltaTime, gameState);
     }
 
     // Update all renderable components
@@ -186,6 +212,12 @@ export class RenderSystem extends System {
    * Shutdown the render system
    */
   shutdown() {
+    // Cleanup camera controller
+    if (this.cameraController) {
+      this.cameraController.destroy();
+      this.cameraController = null;
+    }
+    
     if (this.renderer) {
       // Remove canvas from DOM
       if (this.canvas && this.canvas.parentNode) {

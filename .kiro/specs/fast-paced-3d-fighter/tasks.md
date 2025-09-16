@@ -44,7 +44,7 @@
     - Create RenderSystem for managing Three.js rendering pipeline
     - _Requirements: 4.1, 4.2_
 
-  - [ ] 4.2 Implement camera system with third-person following
+  - [x] 4.2 Implement camera system with third-person following
     - Write camera controller that follows player smoothly
     - Implement camera collision avoidance and optimal positioning
     - Create tests for camera movement and boundary handling
