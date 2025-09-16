@@ -31,7 +31,7 @@
     - Create unit tests for input detection and buffering
     - _Requirements: 7.1, 7.2, 7.3_
 
-  - [ ] 3.2 Create input configuration for fighting game controls
+  - [x] 3.2 Create input configuration for fighting game controls
     - Define key bindings for movement, jumping, attacking, and special techniques
     - Implement multi-input combination detection for advanced moves
     - Write tests for input combination recognition
