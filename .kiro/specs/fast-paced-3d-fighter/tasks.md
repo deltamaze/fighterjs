@@ -18,7 +18,7 @@
     - Create unit tests for System lifecycle
     - _Requirements: 6.2, 6.3_
 
-  - [ ] 2.3 Implement TimeManager for frame-independent timing
+  - [x] 2.3 Implement TimeManager for frame-independent timing
     - Write TimeManager class with getDeltaTime(), getGameTime(), and setTimeScale() methods
     - Implement fixed timestep calculation for physics consistency
     - Create unit tests for time calculations and frame rate independence
