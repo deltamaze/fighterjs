@@ -58,8 +58,13 @@ export class RenderSystem extends System {
       // Get canvas reference
       this.canvas = this.renderer.domElement;
       
-      // Add renderer to DOM
-      document.body.appendChild(this.canvas);
+      // Add renderer to DOM - append to game container if it exists, otherwise body
+      const gameContainer = document.getElementById('game-container');
+      if (gameContainer) {
+        gameContainer.appendChild(this.canvas);
+      } else {
+        document.body.appendChild(this.canvas);
+      }
       
       // Set up basic lighting
       this.setupLighting();
@@ -164,8 +169,8 @@ export class RenderSystem extends System {
       return;
     }
 
-    // Update camera controller if initialized
-    if (this.cameraController) {
+    // Update camera controller if initialized and has a target
+    if (this.cameraController && this.cameraController.isInitialized) {
       this.cameraController.update(deltaTime, gameState);
     }
 

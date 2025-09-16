@@ -24,15 +24,28 @@ async function initializeGame() {
       renderSystem.initialize();
       console.log('RenderSystem initialized successfully!');
       
-      // Add a simple test cube to verify rendering
-      const geometry = new THREE.BoxGeometry(1, 1, 1);
-      const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-      const cube = new THREE.Mesh(geometry, material);
-      
+      // Get the scene first
       const scene = renderSystem.getScene();
       if (scene) {
+        // Add a simple test cube to verify rendering
+        const geometry = new THREE.BoxGeometry(2, 2, 2);
+        const material = new THREE.MeshBasicMaterial({ 
+          color: 0x00ff00,
+          wireframe: false
+        });
+        const cube = new THREE.Mesh(geometry, material);
+        cube.position.set(0, 0, 0);
+        
+        // Add extra lighting to make sure cube is visible
+        const extraLight = new THREE.AmbientLight(0xffffff, 1.0);
+        scene.add(extraLight);
         scene.add(cube);
         console.log('Test cube added to scene');
+        
+        // Debug camera position
+        const camera = renderSystem.getCamera();
+        console.log('Camera position:', camera.position);
+        console.log('Scene children count:', scene.children.length);
         
         // Start a simple render loop
         function animate() {
@@ -45,6 +58,8 @@ async function initializeGame() {
         
         animate();
         console.log('Render loop started');
+      } else {
+        console.error('Failed to get scene from RenderSystem');
       }
       
     } catch (error) {
