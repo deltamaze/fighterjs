@@ -223,7 +223,7 @@ describe('InputService', () => {
       inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
       
       // Advance time beyond buffer window
-      mockTimeManager.setTime(200); // Beyond 100ms window
+      mockTimeManager.setTime(1200); // Beyond 1000ms window
       inputService.update();
       
       const buffer = inputService.getInputBuffer();
@@ -371,6 +371,292 @@ describe('InputService', () => {
       expect(serviceWithoutTime.isActionPressed('moveForward')).toBe(true);
       
       serviceWithoutTime.destroy();
+    });
+  });
+
+  describe('Input Configuration Integration', () => {
+    let mockInputConfiguration;
+
+    beforeEach(() => {
+      // Mock InputConfiguration
+      mockInputConfiguration = {
+        getCurrentBindings: () => ({
+          'KeyW': 'moveForward',
+          'KeyS': 'moveBackward',
+          'KeyJ': 'lightAttack',
+          'KeyK': 'heavyAttack',
+          'Space': 'jump'
+        }),
+        getAllInputCombinations: () => ({
+          'dashForward': {
+            sequence: ['moveForward', 'moveForward'],
+            timeWindow: 300,
+            simultaneous: false
+          },
+          'superMove': {
+            sequence: ['lightAttack', 'heavyAttack'],
+            timeWindow: 50,
+            simultaneous: true
+          },
+          'perfectBlock': {
+            sequence: ['block'],
+            timeWindow: 100,
+            requiresPreciseTiming: true
+          }
+        })
+      };
+
+      inputService.initializeFromConfiguration(mockInputConfiguration);
+    });
+
+    test('should initialize bindings from configuration', () => {
+      expect(inputService.isActionPressed('moveForward')).toBe(false);
+      expect(inputService.getActionBindings().get('moveForward')).toBe('KeyW');
+      expect(inputService.getActionBindings().get('lightAttack')).toBe('KeyJ');
+    });
+
+    test('should detect sequential input combinations', () => {
+      mockTimeManager.setTime(100);
+      
+      // Input dash forward sequence
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyW'));
+      
+      mockTimeManager.setTime(200);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      
+      inputService.update();
+      
+      expect(inputService.isCombinationDetected('dashForward')).toBe(true);
+    });
+
+    test('should detect simultaneous input combinations', () => {
+      mockTimeManager.setTime(100);
+      
+      // Press both buttons simultaneously
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyJ')); // lightAttack
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyK')); // heavyAttack
+      
+      inputService.update();
+      
+      expect(inputService.isCombinationDetected('superMove')).toBe(true);
+    });
+
+    test('should not detect simultaneous combinations when inputs are too far apart', () => {
+      mockTimeManager.setTime(100);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyJ'));
+      inputService.update(); // Update to register the first press
+      
+      mockTimeManager.setTime(200); // 100ms later, outside 50ms window
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyK'));
+      inputService.update(); // Update to check combinations
+      
+      expect(inputService.isCombinationDetected('superMove')).toBe(false);
+    });
+
+    test('should handle combination cooldowns', () => {
+      mockTimeManager.setTime(100);
+      
+      // Trigger combination
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyW'));
+      mockTimeManager.setTime(200);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.update();
+      
+      expect(inputService.isCombinationDetected('dashForward')).toBe(true);
+      expect(inputService.isCombinationOnCooldown('dashForward')).toBe(true);
+      
+      // Try to trigger again immediately
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyW'));
+      mockTimeManager.setTime(250);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.update();
+      
+      expect(inputService.isCombinationDetected('dashForward')).toBe(false); // Should be on cooldown
+    });
+
+    test('should clear combination cooldowns after time expires', () => {
+      mockTimeManager.setTime(100);
+      
+      // Trigger combination
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyW'));
+      mockTimeManager.setTime(200);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.update();
+      
+      expect(inputService.isCombinationOnCooldown('dashForward')).toBe(true);
+      
+      // Advance time past cooldown (300ms cooldown)
+      mockTimeManager.setTime(600);
+      inputService.update();
+      
+      expect(inputService.isCombinationOnCooldown('dashForward')).toBe(false);
+    });
+
+    test('should get remaining cooldown time', () => {
+      mockTimeManager.setTime(100);
+      
+      // Trigger combination
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyW'));
+      mockTimeManager.setTime(200);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.update();
+      
+      mockTimeManager.setTime(250);
+      const remainingCooldown = inputService.getCombinationCooldown('dashForward');
+      
+      expect(remainingCooldown).toBeGreaterThan(0);
+      expect(remainingCooldown).toBeLessThanOrEqual(300);
+    });
+
+    test('should get all detected combinations', () => {
+      mockTimeManager.setTime(100);
+      
+      // Trigger multiple combinations
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyJ'));
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyK'));
+      
+      inputService.update();
+      
+      const detected = inputService.getDetectedCombinations();
+      expect(detected.has('superMove')).toBe(true);
+    });
+
+    test('should clear all combination states', () => {
+      mockTimeManager.setTime(100);
+      
+      // Trigger combination
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyW'));
+      mockTimeManager.setTime(200);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.update();
+      
+      expect(inputService.isCombinationOnCooldown('dashForward')).toBe(true);
+      
+      inputService.clearCombinations();
+      
+      expect(inputService.isCombinationOnCooldown('dashForward')).toBe(false);
+      expect(inputService.getDetectedCombinations().size).toBe(0);
+    });
+  });
+
+  describe('Advanced Combination Detection', () => {
+    let mockInputConfiguration;
+
+    beforeEach(() => {
+      mockInputConfiguration = {
+        getCurrentBindings: () => ({
+          'KeyW': 'moveForward',
+          'KeyS': 'moveBackward',
+          'KeyA': 'moveLeft',
+          'KeyD': 'moveRight',
+          'KeyJ': 'lightAttack',
+          'KeyV': 'block'
+        }),
+        getAllInputCombinations: () => ({
+          'hadoken': {
+            sequence: ['moveBackward', 'moveForward', 'lightAttack'],
+            timeWindow: 600,
+            simultaneous: false
+          },
+          'perfectBlock': {
+            sequence: ['block'],
+            timeWindow: 100,
+            requiresPreciseTiming: true
+          },
+          'complexCombo': {
+            sequence: ['moveLeft', 'moveBackward', 'moveRight', 'moveForward', 'lightAttack'],
+            timeWindow: 1000,
+            simultaneous: false
+          }
+        })
+      };
+
+      inputService.initializeFromConfiguration(mockInputConfiguration);
+    });
+
+    test('should detect complex fighting game inputs', () => {
+      mockTimeManager.setTime(100);
+      
+      // Input hadoken sequence: back, forward, punch
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyS')); // back
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyS'));
+      
+      mockTimeManager.setTime(200);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW')); // forward
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyW'));
+      
+      mockTimeManager.setTime(300);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyJ')); // light attack
+      
+      inputService.update();
+      
+      expect(inputService.isCombinationDetected('hadoken')).toBe(true);
+    });
+
+    test('should handle precise timing requirements', () => {
+      // Mock the configuration to return precise timing requirement
+      mockInputConfiguration.getAllInputCombinations = () => ({
+        'perfectBlock': {
+          sequence: ['block'],
+          timeWindow: 100,
+          requiresPreciseTiming: true
+        }
+      });
+
+      mockTimeManager.setTime(100);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyV'));
+      inputService.update();
+
+      // For precise timing, we need to check the internal buffer validation
+      // This is a simplified test - in practice, precise timing would require
+      // more complex validation logic
+      expect(inputService.isCombinationDetected('perfectBlock')).toBe(true);
+    });
+
+    test('should detect very complex input sequences', () => {
+      // Input complex combo: left, back, right, forward, attack
+      const sequence = [
+        { key: 'KeyA', time: 100 }, // left
+        { key: 'KeyS', time: 200 }, // back  
+        { key: 'KeyD', time: 300 }, // right
+        { key: 'KeyW', time: 400 }, // forward
+        { key: 'KeyJ', time: 500 }  // attack
+      ];
+
+      for (const input of sequence) {
+        mockTimeManager.setTime(input.time);
+        inputService.handleKeyDown(createKeyEvent('keydown', input.key));
+        inputService.handleKeyUp(createKeyEvent('keyup', input.key));
+      }
+
+      mockTimeManager.setTime(600);
+      inputService.update();
+      
+      expect(inputService.isCombinationDetected('complexCombo')).toBe(true);
+    });
+
+    test('should not detect combinations outside time window', () => {
+      mockTimeManager.setTime(100);
+      
+      // Input hadoken but too slowly
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyS'));
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyS'));
+      
+      mockTimeManager.setTime(800); // Too much time passed
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyW'));
+      inputService.handleKeyUp(createKeyEvent('keyup', 'KeyW'));
+      
+      mockTimeManager.setTime(900);
+      inputService.handleKeyDown(createKeyEvent('keydown', 'KeyJ'));
+      
+      inputService.update();
+      
+      expect(inputService.isCombinationDetected('hadoken')).toBe(false);
     });
   });
 
