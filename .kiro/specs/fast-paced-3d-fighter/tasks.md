@@ -12,7 +12,7 @@
     - Create unit tests for Component lifecycle management
     - _Requirements: 7.1, 7.2_
 
-  - [ ] 2.2 Create base System class for game systems
+  - [x] 2.2 Create base System class for game systems
     - Write System base class with update(), initialize(), and shutdown() methods
     - Implement system registration and management
     - Create unit tests for System lifecycle
