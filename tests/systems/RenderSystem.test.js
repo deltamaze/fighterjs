@@ -39,13 +39,13 @@ describe('RenderSystem', () => {
     test('should handle initialization errors gracefully', () => {
       // Test that initialization errors are caught and logged
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-      
+
       expect(() => renderSystem.initialize()).toThrow();
       expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to initialize RenderSystem:', 
+        'Failed to initialize RenderSystem:',
         expect.any(Error)
       );
-      
+
       consoleSpy.mockRestore();
     });
   });
@@ -53,18 +53,18 @@ describe('RenderSystem', () => {
   describe('renderable management', () => {
     test('should add renderable components', () => {
       const mockComponent = { render: jest.fn() };
-      
+
       renderSystem.addRenderable(mockComponent);
-      
+
       expect(renderSystem.renderables.has(mockComponent)).toBe(true);
       expect(renderSystem.renderables.size).toBe(1);
     });
 
     test('should not add components without render method', () => {
       const mockComponent = {};
-      
+
       renderSystem.addRenderable(mockComponent);
-      
+
       expect(renderSystem.renderables.has(mockComponent)).toBe(false);
       expect(renderSystem.renderables.size).toBe(0);
     });
@@ -72,25 +72,25 @@ describe('RenderSystem', () => {
     test('should not add null or undefined components', () => {
       renderSystem.addRenderable(null);
       renderSystem.addRenderable(undefined);
-      
+
       expect(renderSystem.renderables.size).toBe(0);
     });
 
     test('should remove renderable components', () => {
       const mockComponent = { render: jest.fn() };
-      
+
       renderSystem.addRenderable(mockComponent);
       expect(renderSystem.renderables.size).toBe(1);
-      
+
       renderSystem.removeRenderable(mockComponent);
-      
+
       expect(renderSystem.renderables.has(mockComponent)).toBe(false);
       expect(renderSystem.renderables.size).toBe(0);
     });
 
     test('should handle removing non-existent components', () => {
       const mockComponent = { render: jest.fn() };
-      
+
       // Should not throw when removing component that was never added
       expect(() => renderSystem.removeRenderable(mockComponent)).not.toThrow();
       expect(renderSystem.renderables.size).toBe(0);
@@ -100,24 +100,24 @@ describe('RenderSystem', () => {
   describe('update and rendering', () => {
     test('should handle update when not initialized', () => {
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-      
+
       renderSystem.update(16.67, [], {});
 
       expect(consoleSpy).toHaveBeenCalledWith('RenderSystem not initialized');
-      
+
       consoleSpy.mockRestore();
     });
 
     test('should not call render on components when not initialized', () => {
       const mockComponent = { render: jest.fn() };
       renderSystem.addRenderable(mockComponent);
-      
+
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-      
+
       renderSystem.update(16.67, [], {});
 
       expect(mockComponent.render).not.toHaveBeenCalled();
-      
+
       consoleSpy.mockRestore();
     });
   });
@@ -134,7 +134,7 @@ describe('RenderSystem', () => {
   describe('shutdown', () => {
     test('should handle shutdown when not initialized', () => {
       expect(() => renderSystem.shutdown()).not.toThrow();
-      
+
       expect(renderSystem.scene).toBeNull();
       expect(renderSystem.camera).toBeNull();
       expect(renderSystem.renderer).toBeNull();
@@ -146,11 +146,11 @@ describe('RenderSystem', () => {
     test('should clear renderables on shutdown', () => {
       const mockComponent = { render: jest.fn() };
       renderSystem.addRenderable(mockComponent);
-      
+
       expect(renderSystem.renderables.size).toBe(1);
-      
+
       renderSystem.shutdown();
-      
+
       expect(renderSystem.renderables.size).toBe(0);
     });
   });
@@ -168,7 +168,7 @@ describe('RenderSystem', () => {
     test('should accept dependencies in constructor', () => {
       const dependencies = { mockDep: 'test' };
       const systemWithDeps = new RenderSystem(dependencies);
-      
+
       expect(systemWithDeps).toBeInstanceOf(RenderSystem);
     });
   });
@@ -226,7 +226,7 @@ describe('RenderSystem', () => {
     test('should handle setCameraTarget when camera controller is null', () => {
       renderSystem.cameraController = null;
       const mockTarget = { position: { x: 0, y: 0, z: 0 } };
-      
+
       expect(() => renderSystem.setCameraTarget(mockTarget)).not.toThrow();
     });
 
@@ -235,9 +235,10 @@ describe('RenderSystem', () => {
       renderSystem.isInitialized = true;
       renderSystem.cameraController = {
         update: jest.fn(),
-        destroy: jest.fn()
+        destroy: jest.fn(),
+        isInitialized: true  // This is the key property that was missing!
       };
-      renderSystem.renderer = { 
+      renderSystem.renderer = {
         render: jest.fn(),
         dispose: jest.fn()
       };
@@ -255,7 +256,7 @@ describe('RenderSystem', () => {
     test('should handle update when camera controller is null', () => {
       renderSystem.isInitialized = true;
       renderSystem.cameraController = null;
-      renderSystem.renderer = { 
+      renderSystem.renderer = {
         render: jest.fn(),
         dispose: jest.fn()
       };
@@ -280,7 +281,7 @@ describe('RenderSystem', () => {
 
     test('should handle shutdown when camera controller is null', () => {
       renderSystem.cameraController = null;
-      
+
       expect(() => renderSystem.shutdown()).not.toThrow();
     });
   });

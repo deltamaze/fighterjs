@@ -51,13 +51,13 @@
     - _Requirements: 4.1, 4.2_
 
 - [ ] 5. Create player character foundation
-  - [ ] 5.1 Implement Player component with basic 3D model
+  - [x] 5.1 Implement Player component with basic 3D model
     - Create Player class extending Component with blocky character model
     - Implement basic position and rotation state management
     - Write unit tests for player state updates
     - _Requirements: 5.1, 5.2, 6.2_
 
-  - [ ] 5.2 Add basic movement controls to player
+  - [x] 5.2 Add basic movement controls to player
     - Implement basic WASD movement with velocity-based motion
     - Add ground detection and basic physics integration
     - Create tests for movement input processing and state changes
