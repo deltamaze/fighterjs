@@ -73,9 +73,9 @@ export class DIContainer {
    * @returns {boolean}
    */
   has(name) {
-    return this.services.has(name) || 
-           this.singletons.has(name) || 
-           this.factories.has(name);
+    return this.services.has(name) ||
+      this.singletons.has(name) ||
+      this.factories.has(name);
   }
 
   /**
@@ -94,7 +94,7 @@ export class DIContainer {
   createChild() {
     const child = new DIContainer();
     child.parent = this;
-    
+
     // Override resolve to check parent if not found
     const originalResolve = child.resolve.bind(child);
     child.resolve = (name) => {

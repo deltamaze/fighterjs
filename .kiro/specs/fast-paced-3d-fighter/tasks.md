@@ -64,7 +64,7 @@
     - _Requirements: 2.1, 7.1_
 
 - [ ] 6. Implement physics system
-  - [ ] 6.1 Create PhysicsSystem for collision detection and movement
+  - [x] 6.1 Create PhysicsSystem for collision detection and movement
     - Write PhysicsSystem class with rigid body management
     - Implement basic collision detection between players and environment
     - Create unit tests for collision detection accuracy
