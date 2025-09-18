@@ -149,6 +149,9 @@ export class Player extends Component {
    * Clean up Three.js resources
    */
   onDestroy() {
+    // Unregister from physics system first
+    this.unregisterFromPhysics();
+    
     if (this.group) {
       // Dispose of geometries and materials
       this.group.traverse((child) => {
@@ -411,6 +414,22 @@ export class Player extends Component {
    * @param {number} deltaTime - Time elapsed since last frame in seconds
    */
   updateMovement(deltaTime) {
+    // Physics is now handled by PhysicsSystem
+    // This method is kept for compatibility but physics integration
+    // should be done through PhysicsSystem.addRigidBody()
+    
+    // If no physics system is available, fall back to basic physics
+    const physicsSystem = this.dependencies.physicsSystem;
+    if (!physicsSystem) {
+      this.updateBasicPhysics(deltaTime);
+    }
+  }
+
+  /**
+   * Basic physics fallback when PhysicsSystem is not available
+   * @param {number} deltaTime - Time elapsed since last frame in seconds
+   */
+  updateBasicPhysics(deltaTime) {
     // Apply gravity if not grounded
     if (!this.state.isGrounded) {
       const gravity = -20; // Gravity acceleration (units per second squared)
@@ -442,5 +461,64 @@ export class Player extends Component {
       this.state.velocity.y = Math.max(0, this.state.velocity.y);
       this.setGrounded(true);
     }
+  }
+
+  /**
+   * Register this player with the physics system
+   * @param {PhysicsSystem} physicsSystem - The physics system to register with
+   * @returns {Object} The created rigid body
+   */
+  registerWithPhysics(physicsSystem) {
+    if (!physicsSystem) {
+      console.warn('Cannot register player with null physics system');
+      return null;
+    }
+
+    const bodyData = {
+      position: this.state.position.clone(),
+      velocity: this.state.velocity.clone(),
+      size: new THREE.Vector3(
+        this.config.size.width,
+        this.config.size.height,
+        this.config.size.depth
+      ),
+      mass: 1.0,
+      restitution: 0.1, // Low bounce for player
+      friction: 0.8, // High friction for good control
+      component: this, // Reference back to this component
+      collisionLayer: 1, // Player collision layer
+      collisionMask: 0xFFFFFFFF // Collide with everything
+    };
+
+    const rigidBody = physicsSystem.addRigidBody(`player_${this.config.playerId}`, bodyData);
+    
+    // Store reference to physics system for cleanup
+    this.physicsSystem = physicsSystem;
+    this.rigidBodyId = `player_${this.config.playerId}`;
+    
+    return rigidBody;
+  }
+
+  /**
+   * Unregister this player from the physics system
+   */
+  unregisterFromPhysics() {
+    if (this.physicsSystem && this.rigidBodyId) {
+      this.physicsSystem.removeRigidBody(this.rigidBodyId);
+      this.physicsSystem = null;
+      this.rigidBodyId = null;
+    }
+  }
+
+  /**
+   * Called by PhysicsSystem when the player falls out of the world
+   */
+  onFallOut() {
+    console.log(`Player ${this.config.playerId} fell out of the world!`);
+    // Reset to a safe position
+    this.setPosition({ x: 0, y: 5, z: 0 });
+    this.setVelocity({ x: 0, y: 0, z: 0 });
+    
+    // Could trigger game events here (lose a life, respawn, etc.)
   }
 }

@@ -1,73 +1,58 @@
 /**
  * Main entry point for the Fast-Paced 3D Fighter game
+ * TEMPORARY: Using simple debug version to isolate issues
  */
-import { container } from './core/DIContainer.js';
-import { RenderSystem } from './systems/RenderSystem.js';
-import * as THREE from 'three';
 
-console.log('Fast-Paced 3D Fighter - Initializing...');
+console.log('Fast-Paced 3D Fighter - Debug Mode');
 
-// Basic initialization to verify setup
+// Add error handling for debugging
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error);
+  console.error('Error details:', event.filename, event.lineno, event.colno);
+});
+
+// Try both versions - simple first, then complex
 async function initializeGame() {
-  console.log('Game container initialized');
-  console.log('Dependency injection container ready:', container);
-  
-  // Verify Three.js is available
   try {
-    console.log('Three.js loaded successfully:', THREE.REVISION);
+    console.log('Testing simple Three.js setup first...');
     
-    // Test RenderSystem initialization
-    console.log('Testing RenderSystem...');
-    const renderSystem = new RenderSystem();
+    // Import and run simple debug version
+    const simpleDebug = await import('./debug-simple.js');
+    console.log('Simple debug version loaded successfully');
     
-    try {
-      renderSystem.initialize();
-      console.log('RenderSystem initialized successfully!');
-      
-      // Get the scene first
-      const scene = renderSystem.getScene();
-      if (scene) {
-        // Add a simple test cube to verify rendering
-        const geometry = new THREE.BoxGeometry(2, 2, 2);
-        const material = new THREE.MeshBasicMaterial({ 
-          color: 0x00ff00,
-          wireframe: false
-        });
-        const cube = new THREE.Mesh(geometry, material);
-        cube.position.set(0, 0, 0);
+    // Wait 3 seconds, then try the complex version
+    setTimeout(async () => {
+      try {
+        console.log('Now trying complex physics integration...');
         
-        // Add extra lighting to make sure cube is visible
-        const extraLight = new THREE.AmbientLight(0xffffff, 1.0);
-        scene.add(extraLight);
-        scene.add(cube);
-        console.log('Test cube added to scene');
+        const { PhysicsIntegrationExample } = await import('./examples/PhysicsIntegrationExample.js');
         
-        // Debug camera position
-        const camera = renderSystem.getCamera();
-        console.log('Camera position:', camera.position);
-        console.log('Scene children count:', scene.children.length);
+        const gameExample = new PhysicsIntegrationExample();
+        await gameExample.initialize();
+        gameExample.start();
         
-        // Start a simple render loop
-        function animate() {
-          cube.rotation.x += 0.01;
-          cube.rotation.y += 0.01;
-          
-          renderSystem.update(16.67, [], {});
-          requestAnimationFrame(animate);
-        }
+        console.log('='.repeat(50));
+        console.log('🎮 FAST-PACED 3D FIGHTER - PHYSICS DEMO');
+        console.log('='.repeat(50));
+        console.log('Controls:');
+        console.log('  W/A/S/D - Move player');
+        console.log('  SPACE   - Jump (when on ground)');
+        console.log('='.repeat(50));
         
-        animate();
-        console.log('Render loop started');
-      } else {
-        console.error('Failed to get scene from RenderSystem');
+        // Add debug info to window for manual testing
+        window.gameExample = gameExample;
+        window.getPlayerState = () => gameExample.getPlayerState();
+        
+        console.log('💡 Debug: Use window.getPlayerState() in console to see player physics state');
+        
+      } catch (error) {
+        console.error('Failed to initialize complex game:', error);
+        console.log('Continuing with simple debug version...');
       }
-      
-    } catch (error) {
-      console.error('Failed to initialize RenderSystem:', error);
-    }
+    }, 3000);
     
   } catch (error) {
-    console.error('Failed to load Three.js:', error);
+    console.error('Failed to initialize simple debug:', error);
   }
 }
 

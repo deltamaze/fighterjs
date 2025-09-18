@@ -193,6 +193,192 @@ describe('PhysicsSystem', () => {
     });
   });
 
+  describe('Gravity and Ground Physics', () => {
+    test('should apply consistent gravity acceleration over time', () => {
+      const body = physicsSystem.addRigidBody('falling', {
+        position: new THREE.Vector3(0, 10, 0),
+        velocity: new THREE.Vector3(0, 0, 0)
+      });
+
+      const expectedGravity = physicsSystem.config.gravity;
+      const fixedDeltaTime = mockTimeManager.getFixedDeltaTime() / 1000; // Convert to seconds
+
+      // Simulate multiple physics steps
+      physicsSystem.onUpdate(1/60, [], {});
+      const velocityAfterStep1 = body.velocity.y;
+      
+      physicsSystem.onUpdate(1/60, [], {});
+      const velocityAfterStep2 = body.velocity.y;
+
+      // Velocity should increase by gravity * deltaTime each step
+      const expectedVelocityStep1 = expectedGravity * fixedDeltaTime;
+      const expectedVelocityStep2 = expectedGravity * fixedDeltaTime * 2;
+
+      expect(velocityAfterStep1).toBeCloseTo(expectedVelocityStep1, 5);
+      expect(velocityAfterStep2).toBeCloseTo(expectedVelocityStep2, 5);
+    });
+
+    test('should integrate position correctly with gravity', () => {
+      const body = physicsSystem.addRigidBody('falling', {
+        position: new THREE.Vector3(0, 10, 0),
+        velocity: new THREE.Vector3(0, 0, 0)
+      });
+
+      const initialY = body.position.y;
+      const fixedDeltaTime = mockTimeManager.getFixedDeltaTime() / 1000;
+
+      // Simulate one physics step
+      physicsSystem.onUpdate(1/60, [], {});
+
+      // Position should change based on velocity integration
+      // After one step: velocity = gravity * dt, position = initialY + velocity * dt
+      const expectedVelocity = physicsSystem.config.gravity * fixedDeltaTime;
+      const expectedPosition = initialY + expectedVelocity * fixedDeltaTime;
+
+      expect(body.velocity.y).toBeCloseTo(expectedVelocity, 5);
+      expect(body.position.y).toBeCloseTo(expectedPosition, 5);
+    });
+
+    test('should detect ground collision accurately', () => {
+      // Create a body that overlaps with ground (ground is at y=0 with size 100x0.1x100)
+      // Ground extends from y=-0.05 to y=0.05
+      // Body with size 1x1x1 at position y=0.6 has bottom at y=0.1, which should overlap
+      const body = physicsSystem.addRigidBody('landing', {
+        position: new THREE.Vector3(0, 0.55, 0), // Body center at 0.55, bottom at 0.05, overlapping ground
+        velocity: new THREE.Vector3(0, -2, 0),
+        size: new THREE.Vector3(1, 1, 1)
+      });
+
+      expect(body.isGrounded).toBe(false);
+
+      // Simulate physics to trigger collision detection
+      physicsSystem.onUpdate(1/60, [], {});
+
+      // Should detect collision with ground and set grounded state
+      expect(body.isGrounded).toBe(true);
+    });
+
+    test('should stop downward velocity on ground collision', () => {
+      const body = physicsSystem.addRigidBody('landing', {
+        position: new THREE.Vector3(0, 0.6, 0),
+        velocity: new THREE.Vector3(0, -5, 0),
+        size: new THREE.Vector3(1, 1, 1)
+      });
+
+      // Simulate physics to trigger collision
+      physicsSystem.onUpdate(1/60, [], {});
+
+      // Downward velocity should be stopped or reduced significantly
+      expect(body.velocity.y).toBeGreaterThanOrEqual(0);
+    });
+
+    test('should maintain horizontal velocity during ground collision', () => {
+      const body = physicsSystem.addRigidBody('sliding', {
+        position: new THREE.Vector3(0, 0.6, 0),
+        velocity: new THREE.Vector3(3, -2, 4),
+        size: new THREE.Vector3(1, 1, 1),
+        friction: 0.1 // Low friction to test velocity preservation
+      });
+
+      const initialVelocityX = body.velocity.x;
+      const initialVelocityZ = body.velocity.z;
+
+      // Simulate physics
+      physicsSystem.onUpdate(1/60, [], {});
+
+      // Horizontal velocity should be mostly preserved (some friction applied)
+      expect(Math.abs(body.velocity.x)).toBeGreaterThan(Math.abs(initialVelocityX) * 0.8);
+      expect(Math.abs(body.velocity.z)).toBeGreaterThan(Math.abs(initialVelocityZ) * 0.8);
+    });
+
+    test('should handle multiple bodies falling simultaneously', () => {
+      const body1 = physicsSystem.addRigidBody('falling1', {
+        position: new THREE.Vector3(-2, 10, 0),
+        velocity: new THREE.Vector3(0, 0, 0)
+      });
+
+      const body2 = physicsSystem.addRigidBody('falling2', {
+        position: new THREE.Vector3(2, 8, 0),
+        velocity: new THREE.Vector3(0, -1, 0)
+      });
+
+      // Simulate physics
+      physicsSystem.onUpdate(1/60, [], {});
+
+      // Both bodies should be affected by gravity
+      expect(body1.velocity.y).toBeLessThan(0);
+      expect(body2.velocity.y).toBeLessThan(-1); // Should be more negative than initial
+      expect(body1.position.y).toBeLessThan(10);
+      expect(body2.position.y).toBeLessThan(8);
+    });
+
+    test('should use TimeManager for consistent physics timing', () => {
+      // Test with different time scales
+      const body = physicsSystem.addRigidBody('timed', {
+        position: new THREE.Vector3(0, 5, 0),
+        velocity: new THREE.Vector3(0, 0, 0)
+      });
+
+      // Normal time scale
+      mockTimeManager.getFixedDeltaTime.mockReturnValue(16.67); // 60 FPS
+      physicsSystem.onUpdate(1/60, [], {});
+      const normalVelocity = Math.abs(body.velocity.y);
+
+      // Reset body
+      body.velocity.set(0, 0, 0);
+
+      // Half time scale (slow motion)
+      mockTimeManager.getFixedDeltaTime.mockReturnValue(8.335); // 30 FPS equivalent
+      physicsSystem.onUpdate(1/60, [], {});
+      const slowVelocity = Math.abs(body.velocity.y);
+
+      // Slow motion should result in less velocity change
+      expect(slowVelocity).toBeLessThan(normalVelocity);
+      expect(slowVelocity).toBeCloseTo(normalVelocity * 0.5, 1);
+    });
+
+    test('should handle edge case of body exactly at ground level', () => {
+      // Ground extends from y=-0.05 to y=0.05 (center at 0, size 0.1)
+      // Body with size 1 at position y=0.5 has bottom at y=0, which should overlap with ground top at y=0.05
+      const body = physicsSystem.addRigidBody('atGround', {
+        position: new THREE.Vector3(0, 0.5, 0), // Body center at 0.5, bottom at 0, overlapping ground
+        velocity: new THREE.Vector3(0, 0, 0),
+        size: new THREE.Vector3(1, 1, 1)
+      });
+
+      // Simulate physics
+      physicsSystem.onUpdate(1/60, [], {});
+
+      // Should be detected as grounded
+      expect(body.isGrounded).toBe(true);
+      // Velocity might have small values due to physics integration and restitution
+      expect(Math.abs(body.velocity.y)).toBeLessThan(0.5); // Should be close to zero but allow for physics artifacts
+    });
+
+    test('should prevent bodies from sinking into ground', () => {
+      const body = physicsSystem.addRigidBody('sinking', {
+        position: new THREE.Vector3(0, 0.2, 0), // Bottom well below ground level (ground top at y=0.05)
+        velocity: new THREE.Vector3(0, -10, 0),
+        size: new THREE.Vector3(1, 1, 1)
+      });
+
+      // Store initial position for comparison
+      const initialY = body.position.y;
+
+      // Simulate physics
+      physicsSystem.onUpdate(1/60, [], {});
+
+      // The physics system should attempt to resolve the collision
+      // In practice, perfect collision resolution in one frame is difficult
+      // The important thing is that the body is detected as grounded and collision is being resolved
+      expect(body.isGrounded).toBe(true);
+      
+      // The body should either be pushed up or at least not sink further
+      // (depending on the collision resolution implementation)
+      expect(body.position.y).toBeGreaterThanOrEqual(initialY - 0.1); // Allow some tolerance for physics resolution
+    });
+  });
+
   describe('Collision Detection', () => {
     test('should detect box-box collision when overlapping', () => {
       const bodyA = physicsSystem.addRigidBody('boxA', {

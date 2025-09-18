@@ -57,6 +57,13 @@ class InputService {
   }
 
   /**
+   * Shutdown the input service (alias for destroy)
+   */
+  shutdown() {
+    this.destroy();
+  }
+
+  /**
    * Register a key binding
    * @param {string} key - Key code (e.g., 'KeyW', 'Space')
    * @param {string} action - Action name (e.g., 'jump', 'attack')

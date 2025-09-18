@@ -667,4 +667,135 @@ describe('Player Component', () => {
       expect(player.getVelocity().z).toBe(0);
     });
   });
+
+  describe('Physics System Integration', () => {
+    let mockPhysicsSystem;
+
+    beforeEach(() => {
+      mockPhysicsSystem = {
+        addRigidBody: jest.fn().mockReturnValue({
+          id: 'player_1',
+          position: new THREE.Vector3(0, 1, 0),
+          velocity: new THREE.Vector3(0, 0, 0)
+        }),
+        removeRigidBody: jest.fn().mockReturnValue(true)
+      };
+    });
+
+    test('should register with physics system correctly', () => {
+      const rigidBody = player.registerWithPhysics(mockPhysicsSystem);
+
+      expect(mockPhysicsSystem.addRigidBody).toHaveBeenCalledWith(
+        'player_1',
+        expect.objectContaining({
+          position: expect.any(THREE.Vector3),
+          velocity: expect.any(THREE.Vector3),
+          size: expect.any(THREE.Vector3),
+          mass: 1.0,
+          restitution: 0.1,
+          friction: 0.8,
+          component: player,
+          collisionLayer: 1,
+          collisionMask: 0xFFFFFFFF
+        })
+      );
+
+      expect(rigidBody).toBeDefined();
+      expect(player.physicsSystem).toBe(mockPhysicsSystem);
+      expect(player.rigidBodyId).toBe('player_1');
+    });
+
+    test('should handle null physics system gracefully', () => {
+      const rigidBody = player.registerWithPhysics(null);
+
+      expect(rigidBody).toBeNull();
+      expect(player.physicsSystem).toBeUndefined();
+      expect(player.rigidBodyId).toBeUndefined();
+    });
+
+    test('should unregister from physics system', () => {
+      // First register
+      player.registerWithPhysics(mockPhysicsSystem);
+      
+      // Then unregister
+      player.unregisterFromPhysics();
+
+      expect(mockPhysicsSystem.removeRigidBody).toHaveBeenCalledWith('player_1');
+      expect(player.physicsSystem).toBeNull();
+      expect(player.rigidBodyId).toBeNull();
+    });
+
+    test('should handle unregister when not registered', () => {
+      // Should not throw error
+      expect(() => {
+        player.unregisterFromPhysics();
+      }).not.toThrow();
+    });
+
+    test('should use physics system when available', () => {
+      player.dependencies.physicsSystem = mockPhysicsSystem;
+      
+      // Should not call basic physics when physics system is available
+      const basicPhysicsSpy = jest.spyOn(player, 'updateBasicPhysics');
+      
+      player.updateMovement(0.016);
+      
+      expect(basicPhysicsSpy).not.toHaveBeenCalled();
+    });
+
+    test('should fall back to basic physics when physics system unavailable', () => {
+      player.dependencies.physicsSystem = null;
+      
+      const basicPhysicsSpy = jest.spyOn(player, 'updateBasicPhysics');
+      
+      player.updateMovement(0.016);
+      
+      expect(basicPhysicsSpy).toHaveBeenCalledWith(0.016);
+    });
+
+    test('should handle fall out callback', () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      
+      player.onFallOut();
+      
+      expect(consoleSpy).toHaveBeenCalledWith('Player 1 fell out of the world!');
+      expect(player.getPosition()).toEqual(new THREE.Vector3(0, 5, 0));
+      expect(player.getVelocity()).toEqual(new THREE.Vector3(0, 0, 0));
+      
+      consoleSpy.mockRestore();
+    });
+
+    test('should unregister from physics on destroy', () => {
+      // Register first
+      player.registerWithPhysics(mockPhysicsSystem);
+      
+      // Destroy should unregister
+      player.destroy();
+      
+      expect(mockPhysicsSystem.removeRigidBody).toHaveBeenCalledWith('player_1');
+    });
+
+    test('should create rigid body with correct player dimensions', () => {
+      player.registerWithPhysics(mockPhysicsSystem);
+
+      const callArgs = mockPhysicsSystem.addRigidBody.mock.calls[0][1];
+      
+      expect(callArgs.size.x).toBe(player.config.size.width);
+      expect(callArgs.size.y).toBe(player.config.size.height);
+      expect(callArgs.size.z).toBe(player.config.size.depth);
+    });
+
+    test('should use player ID in rigid body ID', () => {
+      const customPlayer = new Player({}, { playerId: 5 });
+      
+      customPlayer.registerWithPhysics(mockPhysicsSystem);
+      
+      expect(mockPhysicsSystem.addRigidBody).toHaveBeenCalledWith(
+        'player_5',
+        expect.any(Object)
+      );
+      
+      customPlayer.destroy();
+    });
+  });
 });

@@ -70,7 +70,7 @@
     - Create unit tests for collision detection accuracy
     - _Requirements: 1.2, 1.3, 4.3_
 
-  - [ ] 6.2 Add gravity and ground physics
+  - [x] 6.2 Add gravity and ground physics
     - Implement gravity application and ground collision detection
     - Add physics integration with TimeManager for consistent behavior
     - Write tests for gravity calculations and ground detection
