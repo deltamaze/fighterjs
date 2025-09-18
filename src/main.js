@@ -17,36 +17,47 @@ async function initializeGame() {
     console.log('Testing simple Three.js setup first...');
     
     // Import and run simple debug version
-    const simpleDebug = await import('./debug-simple.js');
-    console.log('Simple debug version loaded successfully');
+    // const simpleDebug = await import('./debug-simple.js');
+    // console.log('Simple debug version loaded successfully');
     
-    // Wait 3 seconds, then try the complex version
+    // Wait 3 seconds, then try the render system only
     setTimeout(async () => {
       try {
-        console.log('Now trying complex physics integration...');
+        console.log('Now trying RenderSystem only...');
         
-        const { PhysicsIntegrationExample } = await import('./examples/PhysicsIntegrationExample.js');
+        const { testRenderSystem } = await import('./debug-render-only.js');
+        await testRenderSystem();
         
-        const gameExample = new PhysicsIntegrationExample();
-        await gameExample.initialize();
-        gameExample.start();
+        console.log('RenderSystem test completed');
         
-        console.log('='.repeat(50));
-        console.log('🎮 FAST-PACED 3D FIGHTER - PHYSICS DEMO');
-        console.log('='.repeat(50));
-        console.log('Controls:');
-        console.log('  W/A/S/D - Move player');
-        console.log('  SPACE   - Jump (when on ground)');
-        console.log('='.repeat(50));
-        
-        // Add debug info to window for manual testing
-        window.gameExample = gameExample;
-        window.getPlayerState = () => gameExample.getPlayerState();
-        
-        console.log('💡 Debug: Use window.getPlayerState() in console to see player physics state');
+        // Wait another 3 seconds, then try full physics
+        setTimeout(async () => {
+          try {
+            console.log('Now trying full physics integration...');
+            
+            const { PhysicsIntegrationExample } = await import('./examples/PhysicsIntegrationExample.js');
+            
+            const gameExample = new PhysicsIntegrationExample();
+            await gameExample.initialize();
+            gameExample.start();
+            
+            console.log('='.repeat(50));
+            console.log('🎮 FAST-PACED 3D FIGHTER - PHYSICS DEMO');
+            console.log('='.repeat(50));
+            
+            window.gameExample = gameExample;
+            window.getPlayerState = () => gameExample.getPlayerState();
+            
+          } catch (error) {
+            console.error('Failed to initialize full physics demo:', error);
+            console.error('Error stack:', error.stack);
+            console.log('Continuing with RenderSystem-only version...');
+          }
+        }, 3000);
         
       } catch (error) {
-        console.error('Failed to initialize complex game:', error);
+        console.error('Failed to initialize RenderSystem test:', error);
+        console.error('Error stack:', error.stack);
         console.log('Continuing with simple debug version...');
       }
     }, 3000);

@@ -97,8 +97,8 @@ export class PhysicsIntegrationExample {
     console.log('Player group position:', playerGroup.position);
     console.log('Player group children:', playerGroup.children.length);
 
-    // Add a bright test cube at player position for visibility debugging
-    const testGeometry = new THREE.BoxGeometry(2, 2, 2);
+    // Add a bright test cube at player position for visibility debugging - make it LARGE
+    const testGeometry = new THREE.BoxGeometry(4, 4, 4); // Much larger
     const testMaterial = new THREE.MeshBasicMaterial({ 
       color: 0xff0000, // Bright red
       wireframe: false
@@ -107,25 +107,26 @@ export class PhysicsIntegrationExample {
     testCube.position.copy(this.player.getPosition());
     scene.add(testCube);
     this.testCube = testCube; // Store reference for cleanup
+    console.log('Added large red test cube at player position:', testCube.position);
 
-    // Set camera to follow player
-    this.renderSystem.setCameraTarget(this.player.getThreeGroup());
+    // Temporarily disable camera following for debugging
+    // this.renderSystem.setCameraTarget(this.player.getThreeGroup());
     
-    // Configure camera for better view - MUCH further back for debugging
+    // Configure camera for better view - reasonable distance
     const cameraController = this.renderSystem.getCameraController();
     if (cameraController) {
-      cameraController.setOffset(0, 20, 40); // WAY further back and higher up
+      cameraController.setOffset(0, 6, 12); // Reasonable distance
       cameraController.setLookAtOffset(0, 1, 0); // Look at player center
-      cameraController.setFollowSpeed(1.0); // Very slow following for debugging
+      cameraController.setFollowSpeed(2.0); // Normal following speed
     }
 
-    // Also set initial camera position manually as backup - VERY far back
+    // Also set initial camera position manually as backup - closer and looking at player
     const camera = this.renderSystem.getCamera();
     if (camera) {
-      camera.position.set(0, 25, 50); // Much further back
-      camera.lookAt(0, 0, 0); // Look at origin
+      camera.position.set(0, 8, 15); // Closer to see the player
+      camera.lookAt(0, 2, 0); // Look at player height
       console.log('Camera positioned at:', camera.position);
-      console.log('Camera looking at origin');
+      console.log('Camera looking at player area');
     }
 
     console.log('Player created and registered with physics system');
@@ -137,27 +138,28 @@ export class PhysicsIntegrationExample {
   setupScene() {
     const scene = this.renderSystem.getScene();
 
-    // Add a VERY bright reference cube at origin for debugging
+    // Add a VERY bright reference cube at origin for debugging - make it LARGE
     const originCube = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.BoxGeometry(3, 3, 3), // Much larger
       new THREE.MeshBasicMaterial({ color: 0xffffff }) // White cube at origin
     );
-    originCube.position.set(0, 0, 0);
+    originCube.position.set(0, 1.5, 0); // Raise it up so it's visible
     scene.add(originCube);
-    console.log('Added white reference cube at origin');
+    console.log('Added large white reference cube at origin');
 
-    // Create visual ground plane (physics ground is invisible)
-    const groundGeometry = new THREE.PlaneGeometry(50, 50);
+    // Create visual ground plane (physics ground is invisible) - make it VERY visible
+    const groundGeometry = new THREE.PlaneGeometry(100, 100); // Larger ground
     const groundMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0x228B22, // Forest green
+      color: 0x00ff00, // Bright green
       transparent: false,
-      opacity: 1.0
+      opacity: 1.0,
+      side: THREE.DoubleSide // Visible from both sides
     });
     const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
     groundMesh.rotation.x = -Math.PI / 2;
     groundMesh.position.y = 0;
     scene.add(groundMesh);
-    console.log('Added ground plane');
+    console.log('Added large bright ground plane');
 
     // Add some visual obstacles with basic materials
     this.createObstacles(scene);
